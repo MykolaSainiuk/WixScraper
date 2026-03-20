@@ -757,6 +757,8 @@ async def fix_page(page, wait, hostname, blockPrimaryFolder, darkWebsite, forceD
     await page.evaluate('''() => {
         const banner = document.querySelector('[data-hook="consent-banner-root"]');
         if (banner) banner.remove();
+        const closeBtn = document.querySelector('.consent-banner-close-button-container');
+        if (closeBtn) closeBtn.remove();
     }''')
 
     await page.evaluate(f'''() => {{
