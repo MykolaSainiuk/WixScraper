@@ -687,6 +687,12 @@ async def fix_page(page, wait, hostname, blockPrimaryFolder, darkWebsite, forceD
         _lang_path = f'/{lang}' + (_cp.path if _cp.path != '/' else '/')
         canonical = _un((_cp.scheme, _cp.netloc, _lang_path, '', '', ''))
 
+    # Remove cookie consent banner
+    await page.evaluate('''() => {
+        const banner = document.querySelector('[data-hook="consent-banner-root"]');
+        if (banner) banner.remove();
+    }''')
+
     await page.evaluate(f'''() => {{
         document.querySelectorAll('title').forEach(el => el.remove());
         const element = document.createElement('title');
