@@ -693,6 +693,12 @@ async def fix_page(page, wait, hostname, blockPrimaryFolder, darkWebsite, forceD
 
     await page.evaluate('''() => {
         const element = document.createElement('meta');
+        element.setAttribute('charset', 'utf-8');
+        document.querySelector('head').insertBefore(element, document.querySelector('head').firstChild);
+    }''')
+
+    await page.evaluate('''() => {
+        const element = document.createElement('meta');
         element.name = 'robots';
         element.content = 'index, follow';
         document.querySelector('head').appendChild(element);
