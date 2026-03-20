@@ -21,6 +21,14 @@
             "canonical": "https://mkrvmotors.com/general-9",
             "image": "https://mkrvmotors.com/images/banner.webp",
             "author": "Yulian Tseberskyi Motors"
+        },
+        "/12345/mkrvmotors": {
+            "title": "Услуги и цены | Julian Motors — Автоподбор в Польше",
+            "description": "Профессиональная выездная диагностика и автоподбор в Польше. Проверка авто от 219 zł, поиск автомобиля от 749 zł. Вроцлав и вся Польша.",
+            "keywords": "услуги автоподбор польша, цены выездная диагностика, проверка авто польша, поиск авто польша, автоподбор вроцлав цена",
+            "canonical": "https://mkrvmotors.com/mkrvmotors",
+            "image": "https://mkrvmotors.com/images/banner.webp",
+            "author": "Yulian Tseberskyi Motors"
         }
     },
     "mapData": {

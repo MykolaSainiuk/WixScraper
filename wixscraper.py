@@ -383,47 +383,88 @@ lightModeFix = '''<style>
     </style></head>'''
 
 async def makeLocalImages(page, hostname, forceDownloadAgain):
-        # Create images folder if it doesn't exist in hostname folder
+    from urllib.parse import unquote
+    # Create images folder if it doesn't exist in hostname folder
     if not os.path.exists(hostname + '/images'):
         os.makedirs(hostname + '/images')
 
-    # Download all images
+    # Collect all img src AND srcset URLs, stripping Wix resize suffixes (/v1/fill/...)
     imageLinks = await page.querySelectorAllEval('img', 'nodes => nodes.map(n => n.src)')
+    srcsetLinks = await page.querySelectorAllEval(
+        'img[srcset]',
+        '''nodes => nodes.flatMap(n => n.srcset.split(',').map(s => s.trim().split(' ')[0]))'''
+    )
+    # For Wix CDN URLs, strip resize path so we download the full-res original
+    def strip_wix_resize(url):
+        if 'static.wixstatic.com/media/' in url:
+            # Keep only up to the ~mv2.xxx part, drop /v1/fill/... suffix
+            import re
+            m = re.match(r'(https://static\.wixstatic\.com/media/[^/]+(?:~mv2\.[a-z]+)?)', url)
+            if m:
+                return m.group(1)
+        return url
+    allLinks = list(set(strip_wix_resize(u) for u in imageLinks + srcsetLinks))
 
-    for link in imageLinks:
+    def download_image(link):
+        imageName = unquote(link.split('/')[-1].split('?')[0])
+        webpName = imageName.rsplit('.', 1)[0] + '.webp'
+        if not forceDownloadAgain and os.path.exists(hostname + '/images/' + webpName):
+            return
+        try:
+            r = requests.get(link, allow_redirects=True, timeout=15)
+            r.raise_for_status()
+            raw_path = hostname + '/images/' + imageName
+            open(raw_path, 'wb').write(r.content)
+            im = Image.open(raw_path)
+            im.save(hostname + '/images/' + webpName, 'webp')
+            os.remove(raw_path)
+        except Exception as e:
+            print(f'Warning: could not download image {link}: {e}')
 
+    for link in allLinks:
         # Skip non-HTTP(S) URLs (e.g. data: URIs)
         if not link.startswith('http://') and not link.startswith('https://'):
             continue
-
-        # If a webp version of the image already exists, skip it
-        if(not forceDownloadAgain and os.path.exists(hostname + '/images/' + link.split('/')[-1].split('.')[0] + '.webp')):
-            continue
-
-        # Fetch each image and save it to the images folder
-        # Download using requests
-        # Get the image name (URL-decode to avoid %20 etc. in filenames)
-        from urllib.parse import unquote
-        imageName = unquote(link.split('/')[-1])
-        r = requests.get(link, allow_redirects=True)
-        open(hostname + '/images/' + imageName, 'wb').write(r.content)
-
-        # Convert each image to WebP
-        im = Image.open(hostname + '/images/' + imageName)
-        im.save(hostname + '/images/' + imageName.split('.')[0] + '.webp', 'webp')
-
-        # Delete the original image
-        os.remove(hostname + '/images/' + imageName)
+        download_image(link)
 
     # Replace all image links with the local image links, using the webp format
     await page.evaluate('''() => {
         const elements = document.querySelectorAll('img');
         for (const element of elements) {
-            element.src = '/images/' + element.src.split('/').slice(-1)[0].split('.')[0] + '.webp';
-            // remove any srcset
+            const name = decodeURIComponent(element.src.split('/').slice(-1)[0].split('?')[0]);
+            const webpName = name.replace(/\\.[^.]+$/, '') + '.webp';
+            element.src = '/images/' + webpName;
             element.removeAttribute('srcset');
         }
     }''')
+
+async def makeJsLocal(hostname, forceDownloadAgain):
+    """Download CDN JS files used by the carousel/slider to a local /js/ folder."""
+    if not os.path.exists(hostname + '/js'):
+        os.makedirs(hostname + '/js')
+
+    js_files = [
+        'https://cdn.jsdelivr.net/npm/jquery@3.6.4/dist/jquery.min.js',
+        'https://cdnjs.cloudflare.com/ajax/libs/slick-carousel/1.9.0/slick.min.js',
+    ]
+    css_files = [
+        'https://cdnjs.cloudflare.com/ajax/libs/slick-carousel/1.9.0/slick.css',
+        'https://cdnjs.cloudflare.com/ajax/libs/slick-carousel/1.9.0/slick-theme.css',
+    ]
+
+    for url in js_files + css_files:
+        fname = url.split('/')[-1]
+        ext_dir = hostname + '/js'
+        dest = ext_dir + '/' + fname
+        if not forceDownloadAgain and os.path.exists(dest):
+            continue
+        try:
+            r = requests.get(url, allow_redirects=True, timeout=15)
+            r.raise_for_status()
+            open(dest, 'wb').write(r.content)
+        except Exception as e:
+            print(f'Warning: could not download {url}: {e}')
+
 
 async def makeFontsLocal(page, hostname, forceDownloadAgain):
         # Make all fonts local
@@ -539,6 +580,9 @@ async def fix_page(page, wait, hostname, blockPrimaryFolder, darkWebsite, forceD
 
     # Make all fonts local
     await makeFontsLocal(page, hostname, forceDownloadAgain)
+
+    # Download CDN JS/CSS files locally
+    await makeJsLocal(hostname, forceDownloadAgain)
 
     # Meta fixes
     # Delete all meta tags
@@ -777,9 +821,15 @@ async def fix_page(page, wait, hostname, blockPrimaryFolder, darkWebsite, forceD
     html = html.replace('<script src="https://browser.sentry-cdn.com/6.18.2/bundle.min.js" defer></script>', '')
     html = html.replace('//static.parastorage.com', 'https://static.parastorage.com')
 
-    # https://stackoverflow.com/questions/60357083/does-not-use-passive-listeners-to-improve-scrolling-performance-lighthouse-repo
-    html = html.replace('<script src="https://cdn.jsdelivr.net/npm/jquery@3.6.4/dist/jquery.min.js" defer=""></script>', 
-    '''<script src="https://cdn.jsdelivr.net/npm/jquery@3.6.4/dist/jquery.min.js" defer=""></script><script>window.addEventListener('DOMContentLoaded', function() { jQuery.event.special.touchstart = { setup: function( _, ns, handle ) { this.addEventListener("touchstart", handle, { passive: !ns.includes("noPreventDefault") }); } }; jQuery.event.special.touchmove = { setup: function( _, ns, handle ) { this.addEventListener("touchmove", handle, { passive: !ns.includes("noPreventDefault") }); } }; jQuery.event.special.wheel = { setup: function( _, ns, handle ){ this.addEventListener("wheel", handle, { passive: true }); } }; jQuery.event.special.mousewheel = { setup: function( _, ns, handle ){ this.addEventListener("mousewheel", handle, { passive: true }); } }; });</script>''')
+    # Replace CDN JS/CSS with local copies
+    html = html.replace('https://cdn.jsdelivr.net/npm/jquery@3.6.4/dist/jquery.min.js', '/js/jquery.min.js')
+    html = html.replace('https://cdnjs.cloudflare.com/ajax/libs/slick-carousel/1.9.0/slick.min.js', '/js/slick.min.js')
+    html = html.replace('https://cdnjs.cloudflare.com/ajax/libs/slick-carousel/1.9.0/slick.css', '/js/slick.css')
+    html = html.replace('https://cdnjs.cloudflare.com/ajax/libs/slick-carousel/1.9.0/slick-theme.css', '/js/slick-theme.css')
+
+    # Passive listener fix for jquery touch events
+    html = html.replace('<script src="/js/jquery.min.js" defer=""></script>',
+    '''<script src="/js/jquery.min.js" defer=""></script><script>window.addEventListener('DOMContentLoaded', function() { jQuery.event.special.touchstart = { setup: function( _, ns, handle ) { this.addEventListener("touchstart", handle, { passive: !ns.includes("noPreventDefault") }); } }; jQuery.event.special.touchmove = { setup: function( _, ns, handle ) { this.addEventListener("touchmove", handle, { passive: !ns.includes("noPreventDefault") }); } }; jQuery.event.special.wheel = { setup: function( _, ns, handle ){ this.addEventListener("wheel", handle, { passive: true }); } }; jQuery.event.special.mousewheel = { setup: function( _, ns, handle ){ this.addEventListener("mousewheel", handle, { passive: true }); } }; });</script>''')
 
     # Add doctype HTML to start 
     html = '<!DOCTYPE html>' + html
