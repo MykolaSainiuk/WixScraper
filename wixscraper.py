@@ -403,17 +403,25 @@ async def makeLocalImages(page, hostname, forceDownloadAgain):
             if m:
                 return m.group(1)
         return url
-    allLinks = list(set(strip_wix_resize(u) for u in imageLinks + srcsetLinks))
+    # Build a map: stripped_download_url → original_filename
+    # This preserves nice filenames (e.g. "Julian motors.png") while downloading from the base CDN URL
+    url_map = {}  # download_url -> save_name (original filename, decoded)
+    for u in imageLinks + srcsetLinks:
+        if not u.startswith('http://') and not u.startswith('https://'):
+            continue
+        orig_name = unquote(u.split('/')[-1].split('?')[0])
+        dl_url = strip_wix_resize(u)
+        if dl_url not in url_map:
+            url_map[dl_url] = orig_name
 
-    def download_image(link):
-        imageName = unquote(link.split('/')[-1].split('?')[0])
-        webpName = imageName.rsplit('.', 1)[0] + '.webp'
+    def download_image(link, save_name):
+        webpName = save_name.rsplit('.', 1)[0] + '.webp'
         if not forceDownloadAgain and os.path.exists(hostname + '/images/' + webpName):
             return
         try:
             r = requests.get(link, allow_redirects=True, timeout=15)
             r.raise_for_status()
-            raw_path = hostname + '/images/' + imageName
+            raw_path = hostname + '/images/' + save_name
             open(raw_path, 'wb').write(r.content)
             im = Image.open(raw_path)
             im.save(hostname + '/images/' + webpName, 'webp')
@@ -421,11 +429,8 @@ async def makeLocalImages(page, hostname, forceDownloadAgain):
         except Exception as e:
             print(f'Warning: could not download image {link}: {e}')
 
-    for link in allLinks:
-        # Skip non-HTTP(S) URLs (e.g. data: URIs)
-        if not link.startswith('http://') and not link.startswith('https://'):
-            continue
-        download_image(link)
+    for dl_url, save_name in url_map.items():
+        download_image(dl_url, save_name)
 
     # Replace all image links with the local image links, using the webp format
     await page.evaluate('''() => {
