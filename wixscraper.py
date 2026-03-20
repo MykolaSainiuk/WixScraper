@@ -144,9 +144,32 @@ async def fix_gallery(page):
 
         # Fix arrow and dot visibility for the gallery carousel
         await page.addStyleTag(content='''
+        [data-hook="tpa-components-provider"],
+        [data-hook="tpa-components-provider"] ~ *,
+        [class*="pro-gallery"] {
+            height: auto !important;
+            max-height: none !important;
+            overflow: visible !important;
+        }
         .slick-carousel {
             position: relative;
             padding-bottom: 40px;
+            height: auto !important;
+            max-height: none !important;
+        }
+        .slick-carousel .slick-list,
+        .slick-carousel .slick-track,
+        .slick-carousel .slick-slide,
+        .slick-carousel .slick-slide > div {
+            height: auto !important;
+            max-height: none !important;
+        }
+        .slick-carousel img {
+            width: 100%;
+            height: auto !important;
+            max-height: none !important;
+            object-fit: contain !important;
+            display: block;
         }
         .slick-carousel .slick-prev,
         .slick-carousel .slick-next {
@@ -976,6 +999,14 @@ async def fix_page(page, wait, hostname, blockPrimaryFolder, darkWebsite, forceD
     # Passive listener fix for jquery touch events
     html = html.replace('<script src="/js/jquery.min.js" defer=""></script>',
     '''<script src="/js/jquery.min.js" defer=""></script><script>window.addEventListener('DOMContentLoaded', function() { jQuery.event.special.touchstart = { setup: function( _, ns, handle ) { this.addEventListener("touchstart", handle, { passive: !ns.includes("noPreventDefault") }); } }; jQuery.event.special.touchmove = { setup: function( _, ns, handle ) { this.addEventListener("touchmove", handle, { passive: !ns.includes("noPreventDefault") }); } }; jQuery.event.special.wheel = { setup: function( _, ns, handle ){ this.addEventListener("wheel", handle, { passive: true }); } }; jQuery.event.special.mousewheel = { setup: function( _, ns, handle ){ this.addEventListener("mousewheel", handle, { passive: true }); } }; });</script>''')
+
+    # Remove fixed pixel heights from Wix component CSS rules (prevents gallery clipping)
+    import re as _re2
+    html = _re2.sub(
+        r'(#comp-[a-z0-9]+\{[^}]*)(height:\d+px;)([^}]*\})',
+        lambda m: m.group(1) + 'height:auto;' + m.group(3),
+        html
+    )
 
     # Apply per-language text replacements (for untranslated Wix content)
     if lang and textReplacements and lang in textReplacements:
