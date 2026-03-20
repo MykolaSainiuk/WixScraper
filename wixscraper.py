@@ -85,8 +85,10 @@ async def fix_gallery(page):
         await page.addStyleTag(url='https://cdnjs.cloudflare.com/ajax/libs/slick-carousel/1.9.0/slick-theme.css')
         await page.addScriptTag(url='https://cdnjs.cloudflare.com/ajax/libs/slick-carousel/1.9.0/slick.min.js')
 
-        # Get all img links
-        img_links = await gallery.querySelectorAllEval('img', 'nodes => nodes.map(n => n.src)')
+        # Get all img links (src and data-src for lazy-loaded images)
+        img_links = await gallery.querySelectorAllEval('img', 'nodes => nodes.map(n => n.src || n.getAttribute("data-src") || "").filter(Boolean)')
+        datasrc_links = await gallery.querySelectorAllEval('img[data-src]', 'nodes => nodes.map(n => n.getAttribute("data-src")).filter(Boolean)')
+        img_links = list(dict.fromkeys([u for u in img_links + datasrc_links if u and u.startswith('http')]))
     
         # Create the carousel and insert it two parents above the gallery
         await page.evaluate('''() => {
@@ -139,6 +141,41 @@ async def fix_gallery(page):
             });
         });
         });''')
+
+        # Fix arrow and dot visibility for the gallery carousel
+        await page.addStyleTag(content='''
+        .slick-carousel {
+            position: relative;
+            padding-bottom: 40px;
+        }
+        .slick-carousel .slick-prev,
+        .slick-carousel .slick-next {
+            z-index: 100;
+            width: 36px;
+            height: 36px;
+            background: rgba(0,0,0,0.45);
+            border-radius: 50%;
+        }
+        .slick-carousel .slick-prev { left: 10px; }
+        .slick-carousel .slick-next { right: 10px; }
+        .slick-carousel .slick-prev:before,
+        .slick-carousel .slick-next:before {
+            color: white;
+            opacity: 1;
+        }
+        .slick-carousel .slick-dots {
+            bottom: 6px;
+        }
+        .slick-carousel .slick-dots li button:before {
+            color: #333;
+            opacity: 0.5;
+            font-size: 10px;
+        }
+        .slick-carousel .slick-dots li.slick-active button:before {
+            color: #333;
+            opacity: 1;
+        }
+        ''')
 
 async def fix_googlemap(page, mapData):
 
@@ -389,7 +426,11 @@ async def makeLocalImages(page, hostname, forceDownloadAgain):
         os.makedirs(hostname + '/images')
 
     # Collect all img src AND srcset URLs, stripping Wix resize suffixes (/v1/fill/...)
-    imageLinks = await page.querySelectorAllEval('img', 'nodes => nodes.map(n => n.src)')
+    imageLinks = await page.querySelectorAllEval('img', 'nodes => nodes.map(n => n.src).filter(Boolean)')
+    datasrcLinks = await page.querySelectorAllEval(
+        'img[data-src]',
+        'nodes => nodes.map(n => n.getAttribute("data-src")).filter(Boolean)'
+    )
     srcsetLinks = await page.querySelectorAllEval(
         'img[srcset]',
         '''nodes => nodes.flatMap(n => n.srcset.split(',').map(s => s.trim().split(' ')[0]))'''
@@ -406,7 +447,7 @@ async def makeLocalImages(page, hostname, forceDownloadAgain):
     # Build a map: stripped_download_url → original_filename
     # This preserves nice filenames (e.g. "Julian motors.png") while downloading from the base CDN URL
     url_map = {}  # download_url -> save_name (original filename, decoded)
-    for u in imageLinks + srcsetLinks:
+    for u in imageLinks + datasrcLinks + srcsetLinks:
         if not u.startswith('http://') and not u.startswith('https://'):
             continue
         orig_name = unquote(u.split('/')[-1].split('?')[0])
@@ -436,10 +477,13 @@ async def makeLocalImages(page, hostname, forceDownloadAgain):
     await page.evaluate('''() => {
         const elements = document.querySelectorAll('img');
         for (const element of elements) {
-            const name = decodeURIComponent(element.src.split('/').slice(-1)[0].split('?')[0]);
+            const rawSrc = element.src || element.getAttribute('data-src') || '';
+            if (!rawSrc) continue;
+            const name = decodeURIComponent(rawSrc.split('/').slice(-1)[0].split('?')[0]);
             const webpName = name.replace(/\\.[^.]+$/, '') + '.webp';
             element.src = '/images/' + webpName;
             element.removeAttribute('srcset');
+            element.removeAttribute('data-src');
         }
     }''')
 
@@ -447,6 +491,8 @@ async def makeJsLocal(hostname, forceDownloadAgain):
     """Download CDN JS files used by the carousel/slider to a local /js/ folder."""
     if not os.path.exists(hostname + '/js'):
         os.makedirs(hostname + '/js')
+    if not os.path.exists(hostname + '/js/fonts'):
+        os.makedirs(hostname + '/js/fonts')
 
     js_files = [
         'https://cdn.jsdelivr.net/npm/jquery@3.6.4/dist/jquery.min.js',
@@ -456,11 +502,35 @@ async def makeJsLocal(hostname, forceDownloadAgain):
         'https://cdnjs.cloudflare.com/ajax/libs/slick-carousel/1.9.0/slick.css',
         'https://cdnjs.cloudflare.com/ajax/libs/slick-carousel/1.9.0/slick-theme.css',
     ]
+    # slick-theme.css references these font files relative to itself (./fonts/...)
+    slick_font_files = [
+        'https://cdnjs.cloudflare.com/ajax/libs/slick-carousel/1.9.0/fonts/slick.eot',
+        'https://cdnjs.cloudflare.com/ajax/libs/slick-carousel/1.9.0/fonts/slick.woff',
+        'https://cdnjs.cloudflare.com/ajax/libs/slick-carousel/1.9.0/fonts/slick.ttf',
+        'https://cdnjs.cloudflare.com/ajax/libs/slick-carousel/1.9.0/fonts/slick.svg',
+        'https://cdnjs.cloudflare.com/ajax/libs/slick-carousel/1.9.0/ajax-loader.gif',
+    ]
 
     for url in js_files + css_files:
         fname = url.split('/')[-1]
         ext_dir = hostname + '/js'
         dest = ext_dir + '/' + fname
+        if not forceDownloadAgain and os.path.exists(dest):
+            continue
+        try:
+            r = requests.get(url, allow_redirects=True, timeout=15)
+            r.raise_for_status()
+            open(dest, 'wb').write(r.content)
+        except Exception as e:
+            print(f'Warning: could not download {url}: {e}')
+
+    for url in slick_font_files:
+        fname = url.split('/')[-1]
+        # ajax-loader.gif goes in /js/, font files go in /js/fonts/
+        if fname.endswith('.gif'):
+            dest = hostname + '/js/' + fname
+        else:
+            dest = hostname + '/js/fonts/' + fname
         if not forceDownloadAgain and os.path.exists(dest):
             continue
         try:
