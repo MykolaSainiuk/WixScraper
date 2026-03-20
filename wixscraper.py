@@ -608,12 +608,12 @@ async def makeFontsLocal(page, hostname, forceDownloadAgain):
     }''')
 
 
-async def fix_page(page, wait, hostname, blockPrimaryFolder, darkWebsite, forceDownloadAgain, metatags, mapData):
+async def fix_page(page, wait, hostname, blockPrimaryFolder, darkWebsite, forceDownloadAgain, metatags, mapData, lang=None):
     
-    # Get the current page
-    key = page.url.split(hostname)[1]
+    # Get the current page (strip ?lang=XX query param for key lookup)
+    key = page.url.split(hostname)[1].split('?')[0]
 
-    print("Current page: " + key)
+    print("Current page: " + key + (f" [lang={lang}]" if lang else ""))
     
     await asyncio.sleep(wait)
     await scroll_to_bottom(page)
@@ -679,6 +679,13 @@ async def fix_page(page, wait, hostname, blockPrimaryFolder, darkWebsite, forceD
     canonical = metatags[key]['canonical']
     image = metatags[key]['image']
     author = metatags[key]['author']
+
+    # For language variants, insert /lang into the canonical URL
+    if lang:
+        from urllib.parse import urlparse as _up, urlunparse as _un
+        _cp = _up(canonical)
+        _lang_path = f'/{lang}' + (_cp.path if _cp.path != '/' else '/')
+        canonical = _un((_cp.scheme, _cp.netloc, _lang_path, '', '', ''))
 
     await page.evaluate(f'''() => {{
         const element = document.createElement('title');
@@ -892,6 +899,20 @@ async def fix_page(page, wait, hostname, blockPrimaryFolder, darkWebsite, forceD
     # Any empty hrefs are now root hrefs, replace them with /
     html = html.replace('href=""', 'href="/"')
 
+    # For language variants: strip stray ?lang=XX from hrefs and prefix internal paths
+    if lang:
+        import re as _re
+        # Strip ?lang=XX from any hrefs that may have leaked through
+        html = _re.sub(r'(href="[^"]*?)\?lang=[a-z]+([^"]*")', r'\1\2', html)
+        # Prefix all root-relative page hrefs with /lang (skip asset dirs)
+        _asset_prefixes = ('/js/', '/images/', '/fonts/', '/favicon', '/apple-touch', '/site.webmanifest')
+        def _add_lang(m):
+            path = m.group(1)
+            if any(path.startswith(p) for p in _asset_prefixes):
+                return m.group(0)
+            return f'href="/{lang}{path}"'
+        html = _re.sub(r'href="(/[^"]*)"', _add_lang, html)
+
     # Remove browser-sentry script
     html = html.replace('<script src="https://browser.sentry-cdn.com/6.18.2/bundle.min.js" defer></script>', '')
     html = html.replace('//static.parastorage.com', 'https://static.parastorage.com')
@@ -928,90 +949,100 @@ async def main():
     forceDownloadAgain = data['forceDownloadAgain'].lower() == 'true'
     metatags = data['metatags']
     mapData = data['mapData']
+    langs = data.get('langs', [])
 
     # Get the hostname
     hostname = urlparse(site).hostname
 
     # Use microsoft edge as the browser, set width and height to 1920x1080
-    browser = await launch(headless=False, defaultViewport= None, executablePath='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', args=['--window-size=1920,1080'])
+    browser = await launch(headless=False, defaultViewport=None, executablePath='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', args=['--window-size=1920,1080'])
     
     page = await browser.newPage()
-    await page.goto(site)
-    
-    print(site)
 
-    # Fix the first page
-    html = await fix_page(page, wait, hostname, blockPrimaryFolder, darkWebsite, forceDownloadAgain,metatags, mapData)
+    async def scrape_all(lang=None):
+        """Scrape all pages for the given language (None = default)."""
+        lang_suffix = f'?lang={lang}' if lang else ''
+        out_base = hostname + (f'/{lang}' if lang else '')
 
-    if not os.path.exists(hostname):
-        os.mkdir(hostname)
+        start_url = site + lang_suffix
+        await page.goto(start_url)
+        print(start_url)
 
-    with open(hostname + '/index.html', 'w', encoding="utf-8") as f:
-        f.write(html)
+        html = await fix_page(page, wait, hostname, blockPrimaryFolder, darkWebsite, forceDownloadAgain, metatags, mapData, lang=lang)
 
-    if(recursive): 
-        seen = []
-        # Recursively go through all the local links and save them to the directory
-        async def save_links(page, links):
-            # Delete all links that are not local
-            links = [link for link in links if hostname in link]
-            # Delete all links with hash
-            links = [link for link in links if '#' not in link]
-            links = set(links)
-            #print(links)
+        if not os.path.exists(out_base):
+            os.makedirs(out_base)
+        with open(out_base + '/index.html', 'w', encoding='utf-8') as f:
+            f.write(html)
+
+        if recursive:
+            seen = []
             errors = {}
-            for link in links:
-                print(link)
-                if link in seen:
-                    continue
 
-                try:
+            async def save_links(page, links):
+                # Keep only local links, strip hashes
+                links = [link for link in links if hostname in link]
+                links = [link for link in links if '#' not in link]
+                # Normalise: strip any existing ?lang param, re-add current lang
+                normalised = []
+                for link in links:
+                    base = link.split('?')[0]
+                    normalised.append(base + lang_suffix if lang else base)
+                links = set(normalised)
 
-                    await page.goto(link)
-                    
-                    seen.append(link)
-
-                    html = await fix_page(page, wait, hostname, blockPrimaryFolder, darkWebsite, forceDownloadAgain,metatags, mapData)
-
-                    # Write each page as index.html to a folder named after the page
-                    # Check if the hostname is nested inside another folder
-                    # Count number of slashes
-                    newlink = link.replace('https://', '').replace('http://', '')
-
-                    if(newlink.count('/') > 1 and blockPrimaryFolder not in newlink.split('/')[1]):
-                        # Create the folder
-                        if not os.path.exists(hostname + '/' + '/'.join(newlink.split('/')[1:])):
-                            os.makedirs(hostname + '/' + '/'.join(newlink.split('/')[1:]))
-                        with open(hostname + '/' + '/'.join(newlink.split('/')[1:]) + '/index.html', 'w', encoding="utf-8") as f:
-                            f.write(html)
-                    else:
-                        if not os.path.exists(hostname + '/' + link.split('/')[-1]):
-                            os.makedirs(hostname + '/' + link.split('/')[-1])
-                        with open(hostname + '/' + link.split('/')[-1] + '/index.html', 'w', encoding="utf-8") as f:
-                            f.write(html)
-                
-                    await save_links(page, await page.querySelectorAllEval('a', 'nodes => nodes.map(n => n.href)'))
-
-                except Exception as e:
-                    
-                    # Check the error count, if over 3, add link to the seen list (ignore)
-                    if(link in errors):
-                        errors[link] += 1
-                    else:
-                        errors[link] = 1
-
-                    if(errors[link] > 3):
-                        seen.append(link)
-                        print("Error: " + link + ". Giving up after 3 attempts. Added to seen list.")
+                for link in links:
+                    base_link = link.split('?')[0]
+                    if base_link in seen:
                         continue
 
-                    print(e)
-                    print("Error: " + link + ". Try " + str(errors[link]) + " of 3")
+                    try:
+                        await page.goto(link)
+                        seen.append(base_link)
 
-                    continue
+                        html = await fix_page(page, wait, hostname, blockPrimaryFolder, darkWebsite, forceDownloadAgain, metatags, mapData, lang=lang)
 
-        await save_links(page, await page.querySelectorAllEval('a', 'nodes => nodes.map(n => n.href)'))
-        
+                        # Determine save directory relative to out_base
+                        # parts: [hostname, blockPrimaryFolder, ...page_path...]
+                        newlink = base_link.replace('https://', '').replace('http://', '')
+                        parts = newlink.split('/')
+                        page_path = '/'.join(parts[2:]) if len(parts) > 2 else ''
+
+                        if page_path:
+                            save_dir = out_base + '/' + page_path
+                        else:
+                            save_dir = out_base
+
+                        if not os.path.exists(save_dir):
+                            os.makedirs(save_dir)
+                        with open(save_dir + '/index.html', 'w', encoding='utf-8') as f:
+                            f.write(html)
+
+                        await save_links(page, await page.querySelectorAllEval('a', 'nodes => nodes.map(n => n.href)'))
+
+                    except Exception as e:
+                        if link in errors:
+                            errors[link] += 1
+                        else:
+                            errors[link] = 1
+
+                        if errors[link] > 3:
+                            seen.append(base_link)
+                            print("Error: " + link + ". Giving up after 3 attempts. Added to seen list.")
+                            continue
+
+                        print(e)
+                        print("Error: " + link + ". Try " + str(errors[link]) + " of 3")
+                        continue
+
+            await save_links(page, await page.querySelectorAllEval('a', 'nodes => nodes.map(n => n.href)'))
+
+    # Scrape default language
+    await scrape_all()
+
+    # Scrape each additional language
+    for lang in langs:
+        await scrape_all(lang=lang)
+
     #await browser.close()
 
 asyncio.run(main())

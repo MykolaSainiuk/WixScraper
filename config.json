@@ -5,6 +5,10 @@
     "recursive": "True",
     "darkWebsite": "False",
     "forceDownloadAgain": "False",
+    "langs": [
+        "uk",
+        "pl"
+    ],
     "metatags": {
         "/12345": {
             "title": "Julian Motors | Автоподбор и выездная диагностика в Польше",
