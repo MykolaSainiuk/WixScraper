@@ -18,7 +18,17 @@
             "keywords": "підбір авто польща, виїзна діагностика, перевірка авто, купити авто в польщі, підбір авто вроцлав, Julian Motors",
             "canonical": "https://mkrvmotors.com/",
             "image": "https://mkrvmotors.com/images/banner.webp",
-            "author": "Yulian Tseberskyi Motors"
+            "author": "Yulian Tseberskyi Motors",
+            "ru": {
+                "title": "Julian Motors | Автоподбор и выездная диагностика в Польше",
+                "description": "Профессиональный автоподбор и выездная диагностика автомобилей во Вроцлаве и по всей Польше. Свыше 5 лет на рынке. Проверка авто по всем параметрам.",
+                "keywords": "автоподбор польша, выездная диагностика, проверка авто, купить авто в польше, автоподбор вроцлав, Julian Motors"
+            },
+            "pl": {
+                "title": "Julian Motors | Dobór auta i mobilna diagnostyka w Polsce",
+                "description": "Profesjonalny dobór auta i mobilna diagnostyka samochodów we Wrocławiu i w całej Polsce. Ponad 5 lat na rynku. Sprawdzenie auta pod każdym kątem.",
+                "keywords": "dobór auta polska, mobilna diagnostyka, sprawdzenie samochodu, kupić auto w Polsce, dobór auta Wrocław, Julian Motors"
+            }
         },
         "/12345/general-9": {
             "title": "Як купити машину в Польщі | Julian Motors",
@@ -26,7 +36,17 @@
             "keywords": "купити машину в польщі, документи для купівлі авто, реєстрація авто польща, umowa kupna sprzedaży",
             "canonical": "https://mkrvmotors.com/general-9",
             "image": "https://mkrvmotors.com/images/banner.webp",
-            "author": "Yulian Tseberskyi Motors"
+            "author": "Yulian Tseberskyi Motors",
+            "ru": {
+                "title": "Как купить машину в Польше | Julian Motors",
+                "description": "Что нужно для покупки автомобиля в Польше: необходимые документы, порядок регистрации и полезные советы от Julian Motors.",
+                "keywords": "купить машину в польше, документы для покупки авто, регистрация авто польша, umowa kupna sprzedaży"
+            },
+            "pl": {
+                "title": "Jak kupić samochód w Polsce | Julian Motors",
+                "description": "Co potrzebne do zakupu samochodu w Polsce: wymagane dokumenty, procedura rejestracji i przydatne wskazówki od Julian Motors.",
+                "keywords": "kupić samochód w Polsce, dokumenty do kupna auta, rejestracja auta Polska, umowa kupna sprzedaży"
+            }
         },
         "/12345/mkrvmotors": {
             "title": "Послуги та ціни | Julian Motors — Підбір авто в Польщі",
@@ -34,7 +54,23 @@
             "keywords": "послуги підбір авто польща, ціни виїзна діагностика, перевірка авто польща, пошук авто польща, підбір авто вроцлав ціна",
             "canonical": "https://mkrvmotors.com/mkrvmotors",
             "image": "https://mkrvmotors.com/images/banner.webp",
-            "author": "Yulian Tseberskyi Motors"
+            "author": "Yulian Tseberskyi Motors",
+            "ru": {
+                "title": "Услуги и цены | Julian Motors — Автоподбор в Польше",
+                "description": "Профессиональная выездная диагностика и автоподбор в Польше. Проверка авто от 219 zł, поиск автомобиля от 749 zł. Вроцлав и вся Польша.",
+                "keywords": "услуги автоподбор польша, цены выездная диагностика, проверка авто польша, поиск авто польша, автоподбор вроцлав цена"
+            },
+            "pl": {
+                "title": "Usługi i ceny | Julian Motors — Dobór auta w Polsce",
+                "description": "Profesjonalna mobilna diagnostyka i dobór auta w Polsce. Sprawdzenie auta od 219 zł, poszukiwanie samochodu od 749 zł. Wrocław i cała Polska.",
+                "keywords": "usługi dobór auta Polska, ceny mobilna diagnostyka, sprawdzenie auta Polska, poszukiwanie auta Polska, dobór auta Wrocław cena"
+            }
+        }
+    },
+    "textReplacements": {
+        "ru": {},
+        "pl": {
+            "Что нужно для покупки": "Co potrzebne do zakupu"
         }
     },
     "mapData": {

@@ -608,7 +608,7 @@ async def makeFontsLocal(page, hostname, forceDownloadAgain):
     }''')
 
 
-async def fix_page(page, wait, hostname, blockPrimaryFolder, darkWebsite, forceDownloadAgain, metatags, mapData, lang=None):
+async def fix_page(page, wait, hostname, blockPrimaryFolder, darkWebsite, forceDownloadAgain, metatags, mapData, lang=None, textReplacements=None):
     
     # Get the current page (strip ?lang=XX query param for key lookup)
     key = page.url.split(hostname)[1].split('?')[0]
@@ -673,12 +673,15 @@ async def fix_page(page, wait, hostname, blockPrimaryFolder, darkWebsite, forceD
         print("Warning: No metatags defined for this page. Using default metatags.")
         key = '/'
        
-    title = metatags[key]['title']
-    description = metatags[key]['description']
-    keywords = metatags[key]['keywords']
-    canonical = metatags[key]['canonical']
-    image = metatags[key]['image']
-    author = metatags[key]['author']
+    # Use lang-specific overrides for title/description/keywords if available
+    _entry = metatags[key]
+    _lang_entry = _entry.get(lang, {}) if lang else {}
+    title = _lang_entry.get('title', _entry['title'])
+    description = _lang_entry.get('description', _entry['description'])
+    keywords = _lang_entry.get('keywords', _entry['keywords'])
+    canonical = _entry['canonical']
+    image = _entry['image']
+    author = _entry['author']
 
     # For language variants, insert /lang into the canonical URL
     if lang:
@@ -934,6 +937,11 @@ async def fix_page(page, wait, hostname, blockPrimaryFolder, darkWebsite, forceD
     html = html.replace('<script src="/js/jquery.min.js" defer=""></script>',
     '''<script src="/js/jquery.min.js" defer=""></script><script>window.addEventListener('DOMContentLoaded', function() { jQuery.event.special.touchstart = { setup: function( _, ns, handle ) { this.addEventListener("touchstart", handle, { passive: !ns.includes("noPreventDefault") }); } }; jQuery.event.special.touchmove = { setup: function( _, ns, handle ) { this.addEventListener("touchmove", handle, { passive: !ns.includes("noPreventDefault") }); } }; jQuery.event.special.wheel = { setup: function( _, ns, handle ){ this.addEventListener("wheel", handle, { passive: true }); } }; jQuery.event.special.mousewheel = { setup: function( _, ns, handle ){ this.addEventListener("mousewheel", handle, { passive: true }); } }; });</script>''')
 
+    # Apply per-language text replacements (for untranslated Wix content)
+    if lang and textReplacements and lang in textReplacements:
+        for old_text, new_text in textReplacements[lang].items():
+            html = html.replace(old_text, new_text)
+
     # Add doctype HTML to start 
     html = '<!DOCTYPE html>' + html
 
@@ -956,6 +964,7 @@ async def main():
     forceDownloadAgain = data['forceDownloadAgain'].lower() == 'true'
     metatags = data['metatags']
     mapData = data['mapData']
+    textReplacements = data.get('textReplacements', {})
     langs = data.get('langs', [])
     default_lang = data.get('defaultLang', None)
     wix_default_lang = data.get('wixDefaultLang', None)
@@ -977,7 +986,7 @@ async def main():
         await page.goto(start_url)
         print(start_url)
 
-        html = await fix_page(page, wait, hostname, blockPrimaryFolder, darkWebsite, forceDownloadAgain, metatags, mapData, lang=out_lang)
+        html = await fix_page(page, wait, hostname, blockPrimaryFolder, darkWebsite, forceDownloadAgain, metatags, mapData, lang=out_lang, textReplacements=textReplacements)
 
         if not os.path.exists(out_base):
             os.makedirs(out_base)
@@ -1008,7 +1017,7 @@ async def main():
                         await page.goto(link)
                         seen.append(base_link)
 
-                        html = await fix_page(page, wait, hostname, blockPrimaryFolder, darkWebsite, forceDownloadAgain, metatags, mapData, lang=out_lang)
+                        html = await fix_page(page, wait, hostname, blockPrimaryFolder, darkWebsite, forceDownloadAgain, metatags, mapData, lang=out_lang, textReplacements=textReplacements)
 
                         # Determine save directory relative to out_base
                         # parts: [hostname, blockPrimaryFolder, ...page_path...]
