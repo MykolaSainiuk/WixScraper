@@ -5,31 +5,33 @@
     "recursive": "True",
     "darkWebsite": "False",
     "forceDownloadAgain": "False",
+    "defaultLang": "uk",
+    "wixDefaultLang": "ru",
     "langs": [
-        "uk",
+        "ru",
         "pl"
     ],
     "metatags": {
         "/12345": {
-            "title": "Julian Motors | Автоподбор и выездная диагностика в Польше",
-            "description": "Профессиональный автоподбор и выездная диагностика автомобилей во Вроцлаве и по всей Польше. Свыше 5 лет на рынке. Проверка авто по всем параметрам.",
-            "keywords": "автоподбор польша, выездная диагностика, проверка авто, купить авто в польше, автоподбор вроцлав, Julian Motors",
+            "title": "Julian Motors | Підбір авто та виїзна діагностика в Польщі",
+            "description": "Професійний підбір авто та виїзна діагностика автомобілів у Вроцлаві та по всій Польщі. Понад 5 років на ринку. Перевірка авто за всіма параметрами.",
+            "keywords": "підбір авто польща, виїзна діагностика, перевірка авто, купити авто в польщі, підбір авто вроцлав, Julian Motors",
             "canonical": "https://mkrvmotors.com/",
             "image": "https://mkrvmotors.com/images/banner.webp",
             "author": "Yulian Tseberskyi Motors"
         },
         "/12345/general-9": {
-            "title": "Как купить машину в Польше | Julian Motors",
-            "description": "Что нужно для покупки автомобиля в Польше: необходимые документы, порядок регистрации и полезные советы от Julian Motors.",
-            "keywords": "купить машину в польше, документы для покупки авто, регистрация авто польша, umowa kupna sprzedaży",
+            "title": "Як купити машину в Польщі | Julian Motors",
+            "description": "Що потрібно для купівлі автомобіля в Польщі: необхідні документи, порядок реєстрації та корисні поради від Julian Motors.",
+            "keywords": "купити машину в польщі, документи для купівлі авто, реєстрація авто польща, umowa kupna sprzedaży",
             "canonical": "https://mkrvmotors.com/general-9",
             "image": "https://mkrvmotors.com/images/banner.webp",
             "author": "Yulian Tseberskyi Motors"
         },
         "/12345/mkrvmotors": {
-            "title": "Услуги и цены | Julian Motors — Автоподбор в Польше",
-            "description": "Профессиональная выездная диагностика и автоподбор в Польше. Проверка авто от 219 zł, поиск автомобиля от 749 zł. Вроцлав и вся Польша.",
-            "keywords": "услуги автоподбор польша, цены выездная диагностика, проверка авто польша, поиск авто польша, автоподбор вроцлав цена",
+            "title": "Послуги та ціни | Julian Motors — Підбір авто в Польщі",
+            "description": "Професійна виїзна діагностика та підбір авто в Польщі. Перевірка авто від 219 zł, пошук автомобіля від 749 zł. Вроцлав та вся Польща.",
+            "keywords": "послуги підбір авто польща, ціни виїзна діагностика, перевірка авто польща, пошук авто польща, підбір авто вроцлав ціна",
             "canonical": "https://mkrvmotors.com/mkrvmotors",
             "image": "https://mkrvmotors.com/images/banner.webp",
             "author": "Yulian Tseberskyi Motors"

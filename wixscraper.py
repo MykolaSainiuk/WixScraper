@@ -688,6 +688,7 @@ async def fix_page(page, wait, hostname, blockPrimaryFolder, darkWebsite, forceD
         canonical = _un((_cp.scheme, _cp.netloc, _lang_path, '', '', ''))
 
     await page.evaluate(f'''() => {{
+        document.querySelectorAll('title').forEach(el => el.remove());
         const element = document.createElement('title');
         element.innerText = '{title}';
         document.querySelector('head').appendChild(element);
@@ -950,6 +951,8 @@ async def main():
     metatags = data['metatags']
     mapData = data['mapData']
     langs = data.get('langs', [])
+    default_lang = data.get('defaultLang', None)
+    wix_default_lang = data.get('wixDefaultLang', None)
 
     # Get the hostname
     hostname = urlparse(site).hostname
@@ -959,16 +962,16 @@ async def main():
     
     page = await browser.newPage()
 
-    async def scrape_all(lang=None):
-        """Scrape all pages for the given language (None = default)."""
-        lang_suffix = f'?lang={lang}' if lang else ''
-        out_base = hostname + (f'/{lang}' if lang else '')
+    async def scrape_all(url_lang=None, out_lang=None):
+        """Scrape all pages. url_lang = ?lang=XX query param, out_lang = subdir/href prefix."""
+        lang_suffix = f'?lang={url_lang}' if url_lang else ''
+        out_base = hostname + (f'/{out_lang}' if out_lang else '')
 
         start_url = site + lang_suffix
         await page.goto(start_url)
         print(start_url)
 
-        html = await fix_page(page, wait, hostname, blockPrimaryFolder, darkWebsite, forceDownloadAgain, metatags, mapData, lang=lang)
+        html = await fix_page(page, wait, hostname, blockPrimaryFolder, darkWebsite, forceDownloadAgain, metatags, mapData, lang=out_lang)
 
         if not os.path.exists(out_base):
             os.makedirs(out_base)
@@ -987,7 +990,7 @@ async def main():
                 normalised = []
                 for link in links:
                     base = link.split('?')[0]
-                    normalised.append(base + lang_suffix if lang else base)
+                    normalised.append(base + lang_suffix if lang_suffix else base)
                 links = set(normalised)
 
                 for link in links:
@@ -999,7 +1002,7 @@ async def main():
                         await page.goto(link)
                         seen.append(base_link)
 
-                        html = await fix_page(page, wait, hostname, blockPrimaryFolder, darkWebsite, forceDownloadAgain, metatags, mapData, lang=lang)
+                        html = await fix_page(page, wait, hostname, blockPrimaryFolder, darkWebsite, forceDownloadAgain, metatags, mapData, lang=out_lang)
 
                         # Determine save directory relative to out_base
                         # parts: [hostname, blockPrimaryFolder, ...page_path...]
@@ -1036,12 +1039,14 @@ async def main():
 
             await save_links(page, await page.querySelectorAllEval('a', 'nodes => nodes.map(n => n.href)'))
 
-    # Scrape default language
-    await scrape_all()
+    # Root: fetch with defaultLang URL param, save at root (no href prefix)
+    await scrape_all(url_lang=default_lang, out_lang=None)
 
-    # Scrape each additional language
+    # Other langs: each gets its own subdir
     for lang in langs:
-        await scrape_all(lang=lang)
+        # wixDefaultLang is served by Wix without any ?lang= param
+        url_l = None if lang == wix_default_lang else lang
+        await scrape_all(url_lang=url_l, out_lang=lang)
 
     #await browser.close()
 
