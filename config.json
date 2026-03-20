@@ -67,6 +67,12 @@
             }
         }
     },
+    "carouselInsertions": [
+        {
+            "insertBefore": "194c5d_17a625e617a7429383ad355847b0ac5a~mv2.webp",
+            "image": "/images/the porshe.jpg"
+        }
+    ],
     "textReplacements": {
         "ru": {},
         "pl": {

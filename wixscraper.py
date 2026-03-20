@@ -648,7 +648,7 @@ async def makeFontsLocal(page, hostname, forceDownloadAgain):
     }''')
 
 
-async def fix_page(page, wait, hostname, blockPrimaryFolder, darkWebsite, forceDownloadAgain, metatags, mapData, lang=None, textReplacements=None):
+async def fix_page(page, wait, hostname, blockPrimaryFolder, darkWebsite, forceDownloadAgain, metatags, mapData, lang=None, textReplacements=None, carouselInsertions=None):
     
     # Get the current page (strip ?lang=XX query param for key lookup)
     key = page.url.split(hostname)[1].split('?')[0]
@@ -982,6 +982,17 @@ async def fix_page(page, wait, hostname, blockPrimaryFolder, darkWebsite, forceD
         for old_text, new_text in textReplacements[lang].items():
             html = html.replace(old_text, new_text)
 
+    # Apply carousel insertions (insert custom images before a specified image)
+    if carouselInsertions:
+        for ins in carouselInsertions:
+            anchor_src = ins.get('insertBefore', '')
+            new_src = ins.get('image', '')
+            if anchor_src and new_src:
+                anchor_tag = f'<img src="/images/{anchor_src}" alt="Gallery Image">'
+                new_tag = f'<img src="{new_src}" alt="Gallery Image">'
+                if anchor_tag in html and new_tag not in html:
+                    html = html.replace(anchor_tag, new_tag + anchor_tag, 1)
+
     # Add doctype HTML to start 
     html = '<!DOCTYPE html>' + html
 
@@ -1005,6 +1016,7 @@ async def main():
     metatags = data['metatags']
     mapData = data['mapData']
     textReplacements = data.get('textReplacements', {})
+    carouselInsertions = data.get('carouselInsertions', [])
     langs = data.get('langs', [])
     default_lang = data.get('defaultLang', None)
     wix_default_lang = data.get('wixDefaultLang', None)
@@ -1026,7 +1038,7 @@ async def main():
         await page.goto(start_url)
         print(start_url)
 
-        html = await fix_page(page, wait, hostname, blockPrimaryFolder, darkWebsite, forceDownloadAgain, metatags, mapData, lang=out_lang, textReplacements=textReplacements)
+        html = await fix_page(page, wait, hostname, blockPrimaryFolder, darkWebsite, forceDownloadAgain, metatags, mapData, lang=out_lang, textReplacements=textReplacements, carouselInsertions=carouselInsertions)
 
         if not os.path.exists(out_base):
             os.makedirs(out_base)
@@ -1057,7 +1069,7 @@ async def main():
                         await page.goto(link)
                         seen.append(base_link)
 
-                        html = await fix_page(page, wait, hostname, blockPrimaryFolder, darkWebsite, forceDownloadAgain, metatags, mapData, lang=out_lang, textReplacements=textReplacements)
+                        html = await fix_page(page, wait, hostname, blockPrimaryFolder, darkWebsite, forceDownloadAgain, metatags, mapData, lang=out_lang, textReplacements=textReplacements, carouselInsertions=carouselInsertions)
 
                         # Determine save directory relative to out_base
                         # parts: [hostname, blockPrimaryFolder, ...page_path...]
