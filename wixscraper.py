@@ -402,8 +402,9 @@ async def makeLocalImages(page, hostname, forceDownloadAgain):
 
         # Fetch each image and save it to the images folder
         # Download using requests
-        # Get the image name
-        imageName = link.split('/')[-1]
+        # Get the image name (URL-decode to avoid %20 etc. in filenames)
+        from urllib.parse import unquote
+        imageName = unquote(link.split('/')[-1])
         r = requests.get(link, allow_redirects=True)
         open(hostname + '/images/' + imageName, 'wb').write(r.content)
 
