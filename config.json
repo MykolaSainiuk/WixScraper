@@ -1,36 +1,36 @@
 {
-    "site": "https://example.wixsite.com/example1",
-    "blockPrimaryFolder": "example1",
+    "site": "https://fgamlet.wixsite.com/12345",
+    "blockPrimaryFolder": "12345",
     "wait": 3,
     "recursive": "True",
     "darkWebsite": "False",
     "forceDownloadAgain": "False",
     "metatags": {
-        "/example1": {
-            "title": "Example1 | The Best Wix Website",
-            "description": "Example1 is the best Wix website of all time.",
-            "keywords": "example keyword, example1 keyword",
-            "canonical": "https://example1.com/",
-            "image": "https://example1.com/banner.png",
-            "author": "Example1 Author"
+        "/12345": {
+            "title": "Julian Motors | Автоподбор и выездная диагностика в Польше",
+            "description": "Профессиональный автоподбор и выездная диагностика автомобилей во Вроцлаве и по всей Польше. Свыше 5 лет на рынке. Проверка авто по всем параметрам.",
+            "keywords": "автоподбор польша, выездная диагностика, проверка авто, купить авто в польше, автоподбор вроцлав, Julian Motors",
+            "canonical": "https://mkrvmotors.com/",
+            "image": "https://mkrvmotors.com/images/banner.webp",
+            "author": "Yulian Tseberskyi Motors"
         },
-        "/example1/about": {
-            "title": "About | Example1 Website",
-            "description": "About Example1 which is the best Wix website of all time.",
-            "keywords": "example keyword, example1 keyword",
-            "canonical": "https://example1.com/about",
-            "image": "https://example1.com/banner.png",
-            "author": "Example1 Author"
+        "/12345/general-9": {
+            "title": "Как купить машину в Польше | Julian Motors",
+            "description": "Что нужно для покупки автомобиля в Польше: необходимые документы, порядок регистрации и полезные советы от Julian Motors.",
+            "keywords": "купить машину в польше, документы для покупки авто, регистрация авто польша, umowa kupna sprzedaży",
+            "canonical": "https://mkrvmotors.com/general-9",
+            "image": "https://mkrvmotors.com/images/banner.webp",
+            "author": "Yulian Tseberskyi Motors"
         }
     },
     "mapData": {
-        "latitude": "32.0879315",
-        "longitude": "34.797246",
-        "zoom": "12",
+        "latitude": "51.1079",
+        "longitude": "17.0185",
+        "zoom": "14",
         "mapMarker": {
-            "latitude": "32.0879315",
-            "longitude": "34.797246",
-            "popup": "<p>Wix HQ, Tel Aviv, Israel</p>"
+            "latitude": "51.1079",
+            "longitude": "17.0185",
+            "popup": "<p>Julian Motors, ul. Legnicka 33c, Wrocław</p>"
         }
     }
 }
