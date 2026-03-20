@@ -145,7 +145,6 @@ async def fix_gallery(page):
         # Fix arrow and dot visibility for the gallery carousel
         await page.addStyleTag(content='''
         [data-hook="tpa-components-provider"],
-        [data-hook="tpa-components-provider"] ~ *,
         [class*="pro-gallery"] {
             height: auto !important;
             max-height: none !important;
@@ -197,6 +196,9 @@ async def fix_gallery(page):
         .slick-carousel .slick-dots li.slick-active button:before {
             color: #333;
             opacity: 1;
+        }
+        #comp-ifqtfs8k {
+            margin-top: 0 !important;
         }
         ''')
 
@@ -1002,10 +1004,10 @@ async def fix_page(page, wait, hostname, blockPrimaryFolder, darkWebsite, forceD
     html = html.replace('<script src="/js/jquery.min.js" defer=""></script>',
     '''<script src="/js/jquery.min.js" defer=""></script><script>window.addEventListener('DOMContentLoaded', function() { jQuery.event.special.touchstart = { setup: function( _, ns, handle ) { this.addEventListener("touchstart", handle, { passive: !ns.includes("noPreventDefault") }); } }; jQuery.event.special.touchmove = { setup: function( _, ns, handle ) { this.addEventListener("touchmove", handle, { passive: !ns.includes("noPreventDefault") }); } }; jQuery.event.special.wheel = { setup: function( _, ns, handle ){ this.addEventListener("wheel", handle, { passive: true }); } }; jQuery.event.special.mousewheel = { setup: function( _, ns, handle ){ this.addEventListener("mousewheel", handle, { passive: true }); } }; });</script>''')
 
-    # Remove fixed pixel heights from Wix component CSS rules (prevents gallery clipping)
+    # Remove fixed pixel height ONLY from the pro-gallery container (prevents carousel clipping)
     import re as _re2
     html = _re2.sub(
-        r'(#comp-[a-z0-9]+\{[^}]*)(height:\d+px;)([^}]*\})',
+        r'(#comp-kkohl36g\{[^}]*)(height:\d+px;)([^}]*\})',
         lambda m: m.group(1) + 'height:auto;' + m.group(3),
         html
     )
