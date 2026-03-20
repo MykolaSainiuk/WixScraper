@@ -392,6 +392,10 @@ async def makeLocalImages(page, hostname, forceDownloadAgain):
 
     for link in imageLinks:
 
+        # Skip non-HTTP(S) URLs (e.g. data: URIs)
+        if not link.startswith('http://') and not link.startswith('https://'):
+            continue
+
         # If a webp version of the image already exists, skip it
         if(not forceDownloadAgain and os.path.exists(hostname + '/images/' + link.split('/')[-1].split('.')[0] + '.webp')):
             continue
@@ -797,7 +801,7 @@ async def main():
     hostname = urlparse(site).hostname
 
     # Use microsoft edge as the browser, set width and height to 1920x1080
-    browser = await launch(headless=False, defaultViewport= None, executablePath='C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe', args=['--window-size=1920,1080'])
+    browser = await launch(headless=False, defaultViewport= None, executablePath='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', args=['--window-size=1920,1080'])
     
     page = await browser.newPage()
     await page.goto(site)
@@ -878,5 +882,5 @@ async def main():
         
     #await browser.close()
 
-asyncio.get_event_loop().run_until_complete(main())
+asyncio.run(main())
 
